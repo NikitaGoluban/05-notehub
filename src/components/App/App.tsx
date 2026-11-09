@@ -32,7 +32,11 @@ export default function App() {
     mutationFn: deleteNote,
     onSuccess: async () => {
       if (notesQuery.data?.notes.length === 1 && page > 1) {
-        setFilters((previous) => ({ ...previous, page: previous.page - 1 }));
+        setFilters((previous) =>
+          previous.page === page && previous.search === search
+            ? { ...previous, page: page - 1 }
+            : previous,
+        );
       }
       await queryClient.invalidateQueries({ queryKey: ['notes'] });
     },

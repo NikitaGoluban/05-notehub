@@ -1,5 +1,8 @@
 # NoteHub — Homework 5
 
+- [Live application](https://05-notehub-eta-three.vercel.app)
+- [GitHub repository](https://github.com/NikitaGoluban/05-notehub)
+
 A React and TypeScript application for creating, deleting, and searching personal notes using the GoIT NoteHub API.
 
 ## Run locally
