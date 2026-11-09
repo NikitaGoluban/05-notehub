@@ -40,7 +40,7 @@ npm run format:check
 npm run test:e2e
 ```
 
-The seven Playwright tests use mocked API responses and a test token. They do not modify your personal notes. Google Chrome must be installed for the configured browser channel.
+The nine Playwright tests use mocked API responses and a test token. They do not modify your personal notes. Google Chrome must be installed for the configured browser channel.
 
 ## Deploy to Vercel
 

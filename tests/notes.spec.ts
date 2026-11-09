@@ -165,6 +165,109 @@ test('deletes the last note on the last page and returns to the previous page', 
   expect(deleted).toBe(true);
 });
 
+test('keeps pagination valid when deleting reduces three pages to two', async ({
+  page,
+}) => {
+  let deleted = false;
+  const browserErrors: string[] = [];
+  page.on('console', (message) => {
+    if (message.type() === 'warning' || message.type() === 'error') {
+      browserErrors.push(message.text());
+    }
+  });
+  page.on('pageerror', (error) => browserErrors.push(error.message));
+
+  await page.route(`${endpoint}**`, async (route) => {
+    if (route.request().method() === 'DELETE') {
+      deleted = true;
+      await route.fulfill({ json: note('last') });
+      return;
+    }
+
+    const requestedPage = Number(
+      new URL(route.request().url()).searchParams.get('page'),
+    );
+    await route.fulfill({
+      json: {
+        notes:
+          requestedPage === 3
+            ? deleted
+              ? []
+              : [note('last')]
+            : [note(String(requestedPage), `Page ${requestedPage}`)],
+        totalPages: deleted ? 2 : 3,
+      },
+    });
+  });
+
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Page 3', exact: true }).click();
+  await page.getByRole('button', { name: 'Delete Note last' }).click();
+  await expect(page.getByRole('heading', { name: 'Page 2' })).toBeVisible();
+  await expect(
+    page.getByRole('navigation').locator('[aria-current="page"]'),
+  ).toHaveText('2');
+  expect(browserErrors).toEqual([]);
+});
+
+test('disables deletion while pending and invalidates previously cached pages', async ({
+  page,
+}) => {
+  let deleted = false;
+  let deleteRequests = 0;
+  let completeDelete: (() => void) | undefined;
+  const deletion = new Promise<void>((resolve) => {
+    completeDelete = resolve;
+  });
+
+  await page.route(`${endpoint}**`, async (route) => {
+    if (route.request().method() === 'DELETE') {
+      deleteRequests += 1;
+      await deletion;
+      deleted = true;
+      await route.fulfill({ json: note('target') });
+      return;
+    }
+
+    const secondPage =
+      new URL(route.request().url()).searchParams.get('page') === '2';
+    await route.fulfill({
+      json: {
+        notes: secondPage
+          ? [note('other', deleted ? 'Refreshed page 2' : 'Cached page 2')]
+          : deleted
+            ? [note('keep')]
+            : [note('target'), note('keep')],
+        totalPages: 2,
+      },
+    });
+  });
+
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Page 2', exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Cached page 2' }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Page 1', exact: true }).click();
+  await page.getByRole('button', { name: 'Delete Note target' }).click();
+  await expect(
+    page.getByRole('button', { name: 'Delete Note target' }),
+  ).toHaveText('Deleting...');
+  await expect(
+    page.getByRole('button', { name: 'Delete Note keep' }),
+  ).toBeDisabled();
+  expect(deleteRequests).toBe(1);
+
+  completeDelete?.();
+  await expect(page.getByRole('heading', { name: 'Note target' })).toHaveCount(
+    0,
+  );
+  await page.getByRole('button', { name: 'Page 2', exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Refreshed page 2' }),
+  ).toBeVisible();
+});
+
 test('shows loading, request errors with retry, and an empty search', async ({
   page,
 }) => {

@@ -7,6 +7,12 @@
   list-style: none;
 }
 
+.error {
+  padding: 16px;
+  color: #b02a37;
+  text-align: center;
+}
+
 .listItem {
   background-color: #ffffff;
   border: 1px solid #dee2e6;
